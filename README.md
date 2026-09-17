@@ -148,14 +148,3 @@ cd ../terraform-bootstrap && terraform destroy   # only if you want to remove st
 
 ---
 
-## Things worth adding (not yet in the repo)
-
-- **`requirements.txt` / `pyproject.toml`** for `producer/` — right now the setup steps `pip install kafka-python` ad hoc; pinning versions makes the demo reproducible.
-- **`.env.example` or a documented list of required environment variables** — Kafka broker address, S3 bucket name, AWS region, Snowflake account/role, etc. Anyone cloning this repo needs to know what to configure before `docker-compose up`.
-- **`.gitignore`** — make sure `.venv/`, `.terraform/`, `*.tfstate*`, and any `.env` files are excluded so state and secrets never get committed.
-- **Terraform variable docs** (`variables.tf` with `description` fields, or a `terraform-docs`-generated table) — the two-phase apply is the trickiest part of this project to onboard onto; explicit variable descriptions reduce hand-holding.
-- **A short "why two applies" note or diagram** — you already have the explanation, but a one-paragraph callout (or even a sequence diagram) makes the chicken-and-egg IAM/Snowflake dependency much easier to grok at a glance than prose alone.
-- **Sample/expected output** — a screenshot or short GIF of data flowing end-to-end (Kafka topic → S3 object → Snowflake row) makes this land much better as a portfolio piece than instructions alone.
-- **CI validation** — even just `terraform validate` / `terraform fmt -check` on push shows the config is maintained, which matters for a portfolio repo people will actually open.
-- **Cost/cleanup warning** — a one-line note that this provisions real AWS + Snowflake billable resources and should be destroyed after demoing, so nobody spins it up and forgets about it.
-- **License** — worth adding one (MIT is the common default for portfolio repos) if you don't already have one at the root.
