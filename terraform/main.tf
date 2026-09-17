@@ -66,7 +66,6 @@ provider "snowflake" {
 module "iam" {
   source       = "./modules/iam"
   project_name = var.project_name
-  raw_bucket_arn       = module.s3.raw_bucket_arn
   processed_bucket_arn = module.s3.processed_bucket_arn
   snowflake_storage_aws_iam_user_arn = var.snowflake_storage_aws_iam_user_arn
   snowflake_external_id              = var.snowflake_external_id
@@ -91,5 +90,4 @@ module "snowflake" {
   project_name          = var.project_name
   processed_bucket_name = module.s3.processed_bucket_name
   storage_aws_role_arn  = module.iam.snowflake_storage_role_arn
-  transformer_user      = var.snowflake_transformer_user
 }

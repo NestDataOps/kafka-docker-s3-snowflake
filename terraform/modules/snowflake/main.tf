@@ -38,11 +38,6 @@ resource "snowflake_schema" "raw" {
   name     = "RAW"
 }
 
-resource "snowflake_schema" "analytics" {
-  database = snowflake_database.db.name
-  name     = "ANALYTICS"
-}
-
 # Storage integration: lets Snowflake assume the IAM role created in the
 # iam module to read the processed bucket directly (no static AWS keys).
 # NOTE: first `terraform apply` will fail to fully connect until you run
@@ -74,114 +69,6 @@ resource "snowflake_stage" "processed_stage" {
   storage_integration = snowflake_storage_integration.s3_integration.name
   file_format         = "FORMAT_NAME = ${snowflake_database.db.name}.${snowflake_schema.raw.name}.${snowflake_file_format.parquet.name}"
 }
-
-# Raw landing table that Airflow's COPY INTO writes to. Kept schema-light
-# (variant-ish columns) since dbt staging models do the real typing/cleanup.
-resource "snowflake_table" "raw_events" {
-  database = snowflake_database.db.name
-  schema   = snowflake_schema.raw.name
-  name     = "RAW_EVENTS"
-
-  column {
-    name = "EVENT_ID"
-    type = "STRING"
-  }
-  column {
-    name = "EVENT_TYPE"
-    type = "STRING"
-  }
-  column {
-    name = "EVENT_PAYLOAD"
-    type = "VARIANT"
-  }
-  column {
-    name = "SOURCE_FILE_NAME"
-    type = "STRING"
-  }
-  column {
-    name = "INGESTED_AT"
-    type = "TIMESTAMP_NTZ"
-  }
-}
-
-# ---------------------------------------------------------------------------
-# TRANSFORMER role: what Airflow's COPY INTO and dbt actually run as.
-# This automates the grants that were previously run by hand in a
-# worksheet while debugging (warehouse/db/schema USAGE, stage/file-format
-# access, raw table read+write, and CREATE SCHEMA on the database -- dbt
-# needs the last one to materialize models into schemas it manages).
-# ---------------------------------------------------------------------------
-resource "snowflake_account_role" "transformer" {
-  name    = "TRANSFORMER"
-  comment = "Role used by Airflow (COPY INTO) and dbt to build the analytics layer"
-}
-
-resource "snowflake_grant_privileges_to_account_role" "wh_usage" {
-  account_role_name = snowflake_account_role.transformer.name
-  privileges        = ["USAGE"]
-  on_account_object {
-    object_type = "WAREHOUSE"
-    object_name = snowflake_warehouse.wh.name
-  }
-}
-
-resource "snowflake_grant_privileges_to_account_role" "db_usage" {
-  account_role_name = snowflake_account_role.transformer.name
-  privileges        = ["USAGE", "CREATE SCHEMA"]
-  on_account_object {
-    object_type = "DATABASE"
-    object_name = snowflake_database.db.name
-  }
-}
-
-resource "snowflake_grant_privileges_to_account_role" "raw_schema_usage" {
-  account_role_name = snowflake_account_role.transformer.name
-  privileges        = ["USAGE"]
-  on_schema {
-    schema_name = "${snowflake_database.db.name}.${snowflake_schema.raw.name}"
-  }
-}
-
-resource "snowflake_grant_privileges_to_account_role" "analytics_schema_usage" {
-  account_role_name = snowflake_account_role.transformer.name
-  privileges        = ["USAGE", "CREATE TABLE", "CREATE VIEW"]
-  on_schema {
-    schema_name = "${snowflake_database.db.name}.${snowflake_schema.analytics.name}"
-  }
-}
-
-resource "snowflake_grant_privileges_to_account_role" "stage_usage" {
-  account_role_name = snowflake_account_role.transformer.name
-  privileges        = ["USAGE"]
-  on_schema_object {
-    object_type = "STAGE"
-    object_name = "${snowflake_database.db.name}.${snowflake_schema.raw.name}.${snowflake_stage.processed_stage.name}"
-  }
-}
-
-resource "snowflake_grant_privileges_to_account_role" "file_format_usage" {
-  account_role_name = snowflake_account_role.transformer.name
-  privileges        = ["USAGE"]
-  on_schema_object {
-    object_type = "FILE FORMAT"
-    object_name = "${snowflake_database.db.name}.${snowflake_schema.raw.name}.${snowflake_file_format.parquet.name}"
-  }
-}
-
-resource "snowflake_grant_privileges_to_account_role" "raw_events_rw" {
-  account_role_name = snowflake_account_role.transformer.name
-  privileges        = ["SELECT", "INSERT"]
-  on_schema_object {
-    object_type = "TABLE"
-    object_name = "${snowflake_database.db.name}.${snowflake_schema.raw.name}.${snowflake_table.raw_events.name}"
-  }
-}
-
-resource "snowflake_grant_account_role" "transformer_to_user" {
-  role_name = snowflake_account_role.transformer.name
-  user_name = upper(var.transformer_user)
-}
-
 
 # AWS IAM trust-policy updates (setting the Snowflake external_id/ARN
 # condition via the -var flags) are eventually consistent -- Snowflake's
