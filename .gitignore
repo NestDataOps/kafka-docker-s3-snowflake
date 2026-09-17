@@ -1,0 +1,12 @@
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+crash.log
+
+streaming/.ivy2/
+
+*DS_Store
+# Lambda build artifacts
