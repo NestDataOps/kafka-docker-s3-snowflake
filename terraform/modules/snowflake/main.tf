@@ -45,7 +45,7 @@ resource "snowflake_schema" "raw" {
 # STORAGE_AWS_IAM_USER_ARN/EXTERNAL_ID back into the iam module variables,
 # then `terraform apply` again. This chicken-and-egg step is normal for
 # Snowflake storage integrations -- documented in the README.
-resource "snowflake_storage_integration" "s3_integration" {
+resource "snowflake_storage_integration_aws" "s3_integration" {
   name             = "${local.sql_safe_name}_S3_INTEGRATION"
   storage_provider = "S3"
   enabled          = true
@@ -66,7 +66,7 @@ resource "snowflake_stage" "processed_stage" {
   database            = snowflake_database.db.name
   schema              = snowflake_schema.raw.name
   url                 = "s3://${var.processed_bucket_name}/"
-  storage_integration = snowflake_storage_integration.s3_integration.name
+  storage_integration = snowflake_storage_integration_aws.s3_integration.name
   file_format         = "FORMAT_NAME = ${snowflake_database.db.name}.${snowflake_schema.raw.name}.${snowflake_file_format.parquet.name}"
 }
 
@@ -88,11 +88,11 @@ resource "snowflake_stage" "commerce_s3_stage" {
   database    = snowflake_database.db.name
   schema      = snowflake_schema.raw.name
   url                 = "s3://eventdriven-pipeline-processed/raw/commerce_events/"
-  storage_integration = snowflake_storage_integration.s3_integration.name
+  storage_integration = snowflake_storage_integration_aws.s3_integration.name
   file_format         = "TYPE = PARQUET"
 
   depends_on = [
-    snowflake_storage_integration.s3_integration, # gate on the 2nd apply's IAM trust update
+    snowflake_storage_integration_aws.s3_integration, # gate on the 2nd apply's IAM trust update
     time_sleep.wait_for_iam_propagation,
   ]
 }

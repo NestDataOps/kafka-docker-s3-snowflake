@@ -14,3 +14,10 @@ output "snowflake_stage_name" {
 #  value = module.ec2_airflow.public_ip
 #}
 
+output "snowflake_external_id" {
+  value = module.snowflake.external_id
+}
+
+output "snowflake_storage_aws_iam_user_arn" {
+  value = module.snowflake.storage_aws_iam_user_arn
+}
